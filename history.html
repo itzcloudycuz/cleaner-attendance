@@ -2,24 +2,94 @@
 
 <html>
 <head>
-  <title>Attendance History</title>
+  <title>Cleaner Attendance Register</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <style>
     body{
       font-family: Arial;
-      background:#f5f5f5;
+      background:#f4f6f8;
+      margin:0;
       padding:20px;
-    }
-    h1{
       text-align:center;
     }
-    .entry{
-      background:white;
-      padding:15px;
-      margin:10px 0;
+
+    .topbar{
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      gap:20px;
+      margin-bottom:10px;
+    }
+
+    .navbtn{
+      font-size:22px;
+      padding:8px 16px;
+      border:none;
+      border-radius:8px;
+      background:#2d6cdf;
+      color:white;
+      cursor:pointer;
+    }
+
+    #monthLabel{
+      font-size:24px;
+      font-weight:bold;
+    }
+
+    #stats{
+      margin:10px 0 20px 0;
+      font-size:18px;
+      font-weight:bold;
+    }
+
+    .calendar{
+      display:grid;
+      grid-template-columns:repeat(7,1fr);
+      gap:8px;
+      max-width:700px;
+      margin:0 auto;
+    }
+
+    .dayname{
+      font-weight:bold;
+    }
+
+    .day{
+      padding:16px 0;
       border-radius:10px;
+      background:white;
       box-shadow:0 2px 6px rgba(0,0,0,0.15);
+      cursor:pointer;
+    }
+
+    .present{ background:#b9f6c4; }
+    .absent{ background:#ffb3b3; }
+    .future{ background:#ffffff; }
+    .holiday{ background:#d0d0d0; }
+
+    #popup{
+      position:fixed;
+      top:0;
+      left:0;
+      right:0;
+      bottom:0;
+      background:rgba(0,0,0,0.6);
+      display:none;
+      justify-content:center;
+      align-items:center;
+    }
+
+    #popupContent{
+      background:white;
+      padding:25px;
+      border-radius:12px;
+      text-align:center;
+      max-width:300px;
+    }
+
+    #loginBox{
+      margin-top:80px;
     }
   </style>
 
@@ -27,8 +97,35 @@
 
 <body>
 
-<h1>Cleaner Attendance Log</h1>
-<div id="log"></div>
+<div id="loginBox">
+  <h2>Owner Access</h2>
+  <input id="pin" type="password" placeholder="Enter PIN" style="padding:10px;font-size:18px;">
+  <br><br>
+  <button onclick="checkPin()" class="navbtn">Open Register</button>
+</div>
+
+<div id="mainContent" style="display:none;">
+
+  <h1>Cleaner Attendance Register</h1>
+
+  <div class="topbar">
+    <button class="navbtn" onclick="changeMonth(-1)">◀</button>
+    <div id="monthLabel"></div>
+    <button class="navbtn" onclick="changeMonth(1)">▶</button>
+  </div>
+
+  <div id="stats"></div>
+
+  <div class="calendar" id="calendar"></div>
+</div>
+
+<div id="popup">
+  <div id="popupContent">
+    <div id="popupText"></div>
+    <br>
+    <button class="navbtn" onclick="closePopup()">Close</button>
+  </div>
+</div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 
@@ -48,35 +145,118 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-async function loadAttendance(){
+const OWNER_PIN = "2580";
 
-  const snapshot = await db.collection("attendance")
-  .orderBy("time","desc")
-  .get();
-
-  const log = document.getElementById("log");
-
-  snapshot.forEach(doc=>{
-    const data = doc.data();
-
-    if(!data.time) return;
-
-    const date = data.time.toDate();
-
-    const div = document.createElement("div");
-    div.className="entry";
-    div.innerHTML = `
-      <b>Date:</b> ${date.toLocaleDateString()}<br>
-      <b>Time:</b> ${date.toLocaleTimeString()}<br>
-      <b>Lat:</b> ${data.lat.toFixed(5)}<br>
-      <b>Lng:</b> ${data.lng.toFixed(5)}
-    `;
-
-    log.appendChild(div);
-  });
+function checkPin(){
+  if(document.getElementById("pin").value === OWNER_PIN){
+    document.getElementById("loginBox").style.display="none";
+    document.getElementById("mainContent").style.display="block";
+    loadMonth(currentDate);
+  }else{
+    alert("Wrong PIN");
+  }
 }
 
-loadAttendance();
+let currentDate = new Date();
+
+const dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+function changeMonth(offset){
+  currentDate.setMonth(currentDate.getMonth()+offset);
+  loadMonth(currentDate);
+}
+
+async function loadMonth(date){
+
+  const calendar = document.getElementById("calendar");
+  calendar.innerHTML="";
+
+  const year = date.getFullYear();
+  const month = date.getMonth();
+
+  document.getElementById("monthLabel").innerText =
+    monthNames[month]+" "+year;
+
+  dayNames.forEach(d=>{
+    const div=document.createElement("div");
+    div.className="dayname";
+    div.innerText=d;
+    calendar.appendChild(div);
+  });
+
+  const firstDay = new Date(year,month,1).getDay();
+  const daysInMonth = new Date(year,month+1,0).getDate();
+
+  for(let i=0;i<firstDay;i++){
+    const blank=document.createElement("div");
+    calendar.appendChild(blank);
+  }
+
+  const snapshot = await db.collection("attendance").get();
+  let attendanceMap={};
+
+  snapshot.forEach(doc=>{
+    attendanceMap[doc.id]=doc.data();
+  });
+
+  let present=0;
+  let workingDays=0;
+  const today=new Date();
+
+  for(let day=1;day<=daysInMonth;day++){
+
+    const dateStr = year+"-"+String(month+1).padStart(2,'0')+"-"+String(day).padStart(2,'0');
+    const thisDate=new Date(year,month,day);
+    const isSunday = thisDate.getDay()===0;
+
+    const div=document.createElement("div");
+    div.className="day";
+    div.innerHTML="<b>"+day+"</b>";
+
+    if(isSunday){
+      div.classList.add("holiday");
+    }
+    else if(thisDate>today){
+      div.classList.add("future");
+    }
+    else if(attendanceMap[dateStr]){
+      div.classList.add("present");
+      present++;
+      workingDays++;
+    }
+    else{
+      div.classList.add("absent");
+      workingDays++;
+    }
+
+    if(!isSunday){
+      div.onclick=()=>{
+        if(attendanceMap[dateStr]){
+          const t=attendanceMap[dateStr].time?.toDate();
+          showPopup("Date: "+thisDate.toDateString()+"<br>Arrival: "+t.toLocaleTimeString()+"<br>Location Verified ✓");
+        }else{
+          showPopup("No attendance recorded");
+        }
+      };
+    }
+
+    calendar.appendChild(div);
+  }
+
+  document.getElementById("stats").innerText =
+  "Attendance: "+present+" / "+workingDays+" working days ("+
+  Math.round((present/workingDays)*100)+"%) — Sundays are holidays";
+}
+
+function showPopup(text){
+  document.getElementById("popupText").innerHTML=text;
+  document.getElementById("popup").style.display="flex";
+}
+
+function closePopup(){
+  document.getElementById("popup").style.display="none";
+}
 
 </script>
 
