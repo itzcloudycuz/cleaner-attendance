@@ -3,8 +3,8 @@
 <html>
 <head>
   <title>
-    <link rel="manifest" href="manifest.json">
-Cleaner Attendance</title>
+    <link rel="manifest" href="/cleaner-attendance/manifest.json">
+<meta name="theme-color" content="#28a745">Cleaner Attendance</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <style>
@@ -135,7 +135,7 @@ document.getElementById("status").innerHTML =
 </script>
 <script>
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('service-worker.js');
+navigator.serviceWorker.register('/cleaner-attendance/service-worker.js');
 }
 </script>
 
