@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+  <title>Attendance History</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    body{
+      font-family: Arial;
+      background:#f5f5f5;
+      padding:20px;
+    }
+    h1{
+      text-align:center;
+    }
+    .entry{
+      background:white;
+      padding:15px;
+      margin:10px 0;
+      border-radius:10px;
+      box-shadow:0 2px 6px rgba(0,0,0,0.15);
+    }
+  </style>
+
+</head>
+
+<body>
+
+<h1>Cleaner Attendance Log</h1>
+<div id="log"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<script>
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCbGgu_GzKvA5rt8PUZoQS5yzdMgn8Fl_Q",
+  authDomain: "cleaner-attendance.firebaseapp.com",
+  projectId: "cleaner-attendance",
+  storageBucket: "cleaner-attendance.firebasestorage.app",
+  messagingSenderId: "784868045897",
+  appId: "1:784868045897:web:fc53d465697cb443d1bb98"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+async function loadAttendance(){
+
+  const snapshot = await db.collection("attendance")
+  .orderBy("time","desc")
+  .get();
+
+  const log = document.getElementById("log");
+
+  snapshot.forEach(doc=>{
+    const data = doc.data();
+
+    if(!data.time) return;
+
+    const date = data.time.toDate();
+
+    const div = document.createElement("div");
+    div.className="entry";
+    div.innerHTML = `
+      <b>Date:</b> ${date.toLocaleDateString()}<br>
+      <b>Time:</b> ${date.toLocaleTimeString()}<br>
+      <b>Lat:</b> ${data.lat.toFixed(5)}<br>
+      <b>Lng:</b> ${data.lng.toFixed(5)}
+    `;
+
+    log.appendChild(div);
+  });
+}
+
+loadAttendance();
+
+</script>
+
+</body>
+</html>
