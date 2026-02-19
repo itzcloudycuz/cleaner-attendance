@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+  <title>Cleaner Attendance</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    body{
+      font-family: Arial;
+      text-align:center;
+      background:#f2f2f2;
+      padding-top:80px;
+    }
+    button{
+      background:#28a745;
+      color:white;
+      border:none;
+      padding:20px 40px;
+      font-size:22px;
+      border-radius:12px;
+      cursor:pointer;
+    }
+    #status{
+      margin-top:30px;
+      font-size:20px;
+      font-weight:bold;
+    }
+  </style>
+
+</head>
+
+<body>
+
+<h1>Cleaner Attendance</h1>
+<button onclick="markAttendance()">MARK ARRIVAL</button>
+
+<div id="status"></div>
+
+<!-- Firebase libraries -->
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<script>
+
+/* YOU WILL PASTE YOUR FIREBASE CONFIG HERE LATER */
+const firebaseConfig = {
+  apiKey: "",
+  authDomain: "",
+  projectId: "",
+  storageBucket: "",
+  messagingSenderId: "",
+  appId: ""
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+firebase.auth().signInAnonymously();
+
+const HOME_LAT = 17.342394;
+const HOME_LNG = 78.374512;
+const ALLOWED_RADIUS = 35; // meters
+
+function distance(lat1, lon1, lat2, lon2) {
+  const R = 6371e3;
+  const φ1 = lat1 * Math.PI/180;
+  const φ2 = lat2 * Math.PI/180;
+  const Δφ = (lat2-lat1) * Math.PI/180;
+  const Δλ = (lon2-lon1) * Math.PI/180;
+
+  const a = Math.sin(Δφ/2)*Math.sin(Δφ/2) +
+    Math.cos(φ1)*Math.cos(φ2) *
+    Math.sin(Δλ/2)*Math.sin(Δλ/2);
+
+  const c = 2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R*c;
+}
+
+function markAttendance(){
+
+  document.getElementById("status").innerHTML="Checking location...";
+
+  navigator.geolocation.getCurrentPosition(async pos => {
+
+    const userLat = pos.coords.latitude;
+    const userLng = pos.coords.longitude;
+
+    const d = distance(userLat,userLng,HOME_LAT,HOME_LNG);
+
+    if(d > ALLOWED_RADIUS){
+      document.getElementById("status").innerHTML =
+      "❌ You are not at the house location.";
+      return;
+    }
+
+    await db.collection("attendance").add({
+      time: firebase.firestore.FieldValue.serverTimestamp(),
+      lat: userLat,
+      lng: userLng
+    });
+
+    document.getElementById("status").innerHTML =
+    "✅ Attendance marked successfully!";
+
+  }, () => {
+    document.getElementById("status").innerHTML =
+    "Please allow location permission.";
+  });
+}
+
+</script>
+
+</body>
+</html>
