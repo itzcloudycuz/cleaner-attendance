@@ -97,11 +97,29 @@ function markAttendance(){
       return;
     }
 
-    await db.collection("attendance").add({
-      time: firebase.firestore.FieldValue.serverTimestamp(),
-      lat: userLat,
-      lng: userLng
-    });
+const today = new Date();
+const dateId = today.getFullYear() + "-" +
+String(today.getMonth()+1).padStart(2,'0') + "-" +
+String(today.getDate()).padStart(2,'0');
+
+const docRef = db.collection("attendance").doc(dateId);
+const docSnap = await docRef.get();
+
+if(docSnap.exists){
+document.getElementById("status").innerHTML =
+"⚠️ Attendance already marked today";
+return;
+}
+
+await docRef.set({
+time: firebase.firestore.FieldValue.serverTimestamp(),
+lat: userLat,
+lng: userLng
+});
+
+document.getElementById("status").innerHTML =
+"✅ Attendance marked successfully!";
+
 
     document.getElementById("status").innerHTML =
     "✅ Attendance marked successfully!";
