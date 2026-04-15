@@ -130,6 +130,10 @@
 <div id="mainContent" style="display:none;">
 
   <h1>Cleaner Attendance Register</h1>
+  
+<div style="position:absolute; top:20px; right:20px;">
+  <button onclick="toggleDarkMode()" id="themeBtn">🌙</button>
+</div>
 
   <div class="topbar">
     <button class="navbtn" onclick="changeMonth(-1)">◀</button>
@@ -280,6 +284,29 @@ function showPopup(text){
 function closePopup(){
   document.getElementById("popup").style.display="none";
 }
+function toggleDarkMode(){
+document.body.classList.toggle("dark");
+
+const isDark = document.body.classList.contains("dark");
+localStorage.setItem("darkMode", isDark);
+
+document.getElementById("themeBtn").innerText = isDark ? "☀️" : "🌙";
+}
+
+// Load saved mode safely
+document.addEventListener("DOMContentLoaded", () => {
+const saved = localStorage.getItem("darkMode") === "true";
+
+if(saved){
+document.body.classList.add("dark");
+
+```
+const btn = document.getElementById("themeBtn");
+if(btn) btn.innerText = "☀️";
+```
+
+}
+});
 
 </script>
 
